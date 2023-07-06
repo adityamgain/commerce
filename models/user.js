@@ -5,16 +5,18 @@ const sequelize = new Sequelize('commerce', 'root', '', {
 });
 
 const User = sequelize.define('User', {
-  firstName: {
+  Name: {
     type: DataTypes.STRING
   },
-  lastName: {
+  userName: {
     type: DataTypes.STRING
   },
   email: {
     type: DataTypes.STRING
   },
-  
+   password:{
+     type:DataTypes.STRING
+    }
 });
 
 module.exports = User;

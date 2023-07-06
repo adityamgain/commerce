@@ -9,7 +9,7 @@ const Items = sequelize.define('Items', {
     type: DataTypes.STRING
   },
   img: {
-    type: DataTypes.STRING
+    type: DataTypes.TEXT
   },
   price: {
     type: DataTypes.INTEGER
