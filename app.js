@@ -9,19 +9,21 @@ const expressSession=require("express-session");
 const db = require('./models/user');
 const User  = require('./models/user');
 const Items  = require('./models/product');
-const { initializingPassport } = require('./passportConfiq');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+const { isAuthenticated } = require('./authenticate');
 
 const app = express();
 
-initializingPassport(passport);
+// initializingPassport(passport);
 
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(expressSession({secret:"secret", resave:false, saveUninitialized:false}));
 
 app.use(methodOverride('_method'));
-app.use(passport.initialize());
-app.use(passport.session());
+// app.use(passport.initialize());
+// app.use(passport.session());
 
 const hostname = 'localhost';
 const port = 3000;
@@ -54,6 +56,10 @@ try {
   console.error('Unable to connect to the database:', error);
 }
 
+
+sequelize.sync({ alter: true });
+console.log("All models were synchronized successfully.");
+
 app.get('/', (req, res) => {
   res.render('home')
 });
@@ -63,7 +69,8 @@ app.get('/products',async (req, res) => {
   res.render('prod',{products})
 });
 
-app.get('/add',(req,res)=>{
+// isAutheniticate
+app.get('/add',isAuthenticated, (req,res)=>{    
   res.render('newproduct')
 });
 
@@ -83,6 +90,12 @@ app.post('/products',async(req,res)=>{
 }
 });
 
+app.get('/products/:id',async(req,res)=>{
+  const itemId= req.params.id;
+  const data=await Items.findByPk(itemId);
+  res.render('info',{ data });
+});
+
 app.get('/products/:id/edit',async(req,res)=>{
   const itemId= req.params.id;
   const data=await Items.findByPk(itemId);
@@ -92,23 +105,18 @@ app.get('/products/:id/edit',async(req,res)=>{
 app.put('/products/:id',async(req,res)=>{
   const itemId= req.params.id;
   const{ name, price, img}= req.body;
-  const [numRowsUpdated,[updatedItem]]= await Items.update(
+  const [numRowsUpdated]= await Items.update(
     { name, price, img},{
     where:{
       id:itemId
-    }
+    },returning:true
   });
   if (numRowsUpdated === 0) {
     return res.status(404).json({ error: 'Item not found' });
   }
-  res.redirect('/products/:id');
+  res.redirect(`/products/${itemId}`);
 });
 
-app.get('/products/:id',async(req,res)=>{
-  const itemId= req.params.id;
-  const data=await Items.findByPk(itemId);
-  res.render('info',{ data });
-});
 
 app.delete('/products/:id',async(req,res)=>{
   const itemId=req.params.id;
@@ -120,47 +128,61 @@ app.delete('/products/:id',async(req,res)=>{
   res.redirect('/products');
 });
 
-app.get('/login',(req,res)=>{
-  res.render('login');
-})
-
-app.post('/login',passport.authenticate('local',{failureRedirect: '/signin', successRedirect: '/'}), (req,res)=>{
-  res.redirect('/products')
-})
-
 app.get('/signin',async(req,res)=>{
   res.render('signin');
 })
 
-app.post('/signin',async (req,res)=>{
-  const {Name, userName, email, password}= req.body;
-  const user= await User.findOne({where: { email: req.body.email}})
-  if(user) return res.status(400).send("user already exists")
-  const data= await User.create({
-    Name,
-    userName,
-    email,
-    password,
-    timestamp: new Date().toISOString()
-  });
-  res.redirect('/')
-});
-
-app.post('/insert',async (req,res)=>{
-  await Items.create({
-    name: 'wood',
-    img: 'foijnfeiruf.jpn',
-    price: 43
-  }).catch(err=>{
-    if(err){
-      console.log(err)
+app.post('/signin', async (req, res) => {
+  const { Name, userName, email, password } = req.body;
+  try {
+    const user = await User.findOne({ where: { email: req.body.email } });
+    if (user) {
+      return res.status(400).send("User already exists");
     }
-  });
+    bcrypt.genSalt(saltRounds, async (err, salt) => {
+      bcrypt.hash(password, salt, async (err, hash) => {
+        const data = await User.create({
+          Name,
+          userName,
+          email,
+          password: hash,
+          timestamp: new Date().toISOString()
+        });
+        res.redirect('/');
+      });
+    });
+  } catch (error) {
+    res.status(500).send("Internal server error");
+  }
 });
 
 
-sequelize.sync({ alter: true });
-console.log("All models were synchronized successfully.");
+app.get('/login',(req,res)=>{
+  res.render('login');
+})
+
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.redirect('/signin');
+    }
+    if (!user.password) {
+      return res.status(500).send("User data is invalid");
+    }
+    const passwordsMatch = await bcrypt.compare(password, user.password);
+    if (passwordsMatch) {
+      return res.redirect('/products');
+    } else {
+      return res.redirect('/login');
+    }
+  } catch (error) {
+    console.error("Error while handling '/login' request:", error);
+    res.redirect('/login');
+  }
+});
+
 
 // db.sequelize.sync().then((req)=>{
   app.listen(port, hostname, () => {
