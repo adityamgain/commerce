@@ -35,7 +35,7 @@
   <div class="card-body">
     <h5 class="card-title"> <%= product.name %> </h5>
     <h3 class="card-text"> Rs. <%= product.price %> </h3>
-    <a href="#" class="btn btn-primary">BUY</a>
+    <a href="/payment/<%= product.id%>" class="btn btn-primary">BUY</a>
     <a href="/products/<%= product.id%>" class="btn btn-info">View</a>
 
   </div>

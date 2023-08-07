@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://khalti.s3.ap-south-1.amazonaws.com/KPG/dist/2020.12.17.0.0.0/khalti-checkout.iffe.js"></script>
+    <title>payment</title>
+</head>
+<body>
+    <button id="payment-button">Pay with Khalti</button>
+    
+
+    <script>
+        var config = {
+            // replace the publicKey with yours
+            "publicKey": "<%= publicKey %>",
+            "productIdentity": "<%= data.id %>",
+            "productName": "<%= data.name %>",
+            "productUrl": "http://localhost:3000/products",
+            "paymentPreference": [
+                "KHALTI",
+                "EBANKING",
+                "MOBILE_BANKING",
+                "CONNECT_IPS",
+                ],
+            "eventHandler": {
+                onSuccess (payload) {
+                    console.log(payload);
+                    window.location.href = "http://localhost:3000/payment-verify?token=" + payload.token + "&price=" + (payload.amount);
+                },
+                onError (error) {
+                    console.log(error);
+                },
+                onClose () {
+                    console.log('widget is closing');
+                }
+            }
+        };
+
+        var checkout = new KhaltiCheckout(config);
+        var btn = document.getElementById("payment-button");
+        btn.onclick = function () {
+            checkout.show({amount: <%= data.price %>*100});
+        };
+    </script>
+</body>
+</html>
