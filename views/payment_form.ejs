@@ -3,10 +3,11 @@
 <head>
     <script src="https://khalti.s3.ap-south-1.amazonaws.com/KPG/dist/2020.12.17.0.0.0/khalti-checkout.iffe.js"></script>
     <title>payment</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
-    <button id="payment-button">Pay with Khalti</button>
-    
+        <button id="payment-button">Pay with Khalti</button>
+
 
     <script>
         var config = {
@@ -24,8 +25,33 @@
             "eventHandler": {
                 onSuccess (payload) {
                     console.log(payload);
-                    window.location.href = "http://localhost:3000/payment-verify?token=" + payload.token + "&price=" + (payload.amount);
-                },
+                    axios.post('http://localhost:3000/orders', { paymentResponse: payload },{
+                        headers: {
+                        'Content-Type': 'application/json'
+                        }
+                    }) 
+                    .then(response => {
+                        console.log('Order details added to the database:', response);
+                    })
+                    .catch(error => {
+                        console.error('Error adding order details:', error);
+                    });                   
+                    let data = {
+                        "token": payload.token,
+                        "amount": payload.amount
+                        };
+
+                        let config = {
+                        headers: {
+                            'Authorization': 'Key test_secret_key_f59e8b7d18b4499ca40f68195a846e9b',
+                            'Content-Type': 'application/json'
+                        }
+                        };
+
+                        axios.post("https://khalti.com/api/v2/payment/verify/", data, config) 
+                        window.location.href = "http://localhost:3000/products";
+               
+                    },
                 onError (error) {
                     console.log(error);
                 },

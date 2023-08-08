@@ -9,10 +9,12 @@ const expressSession=require("express-session");
 const db = require('./models/user');
 const User  = require('./models/user');
 const Items  = require('./models/product');
+const  OrderItem  = require('./models/orders');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 const { isAuthenticated } = require('./authenticate');
 const axios = require('axios');
+const cors = require('cors');
 
 //config keys 
 const publicKey = 'test_public_key_da5c0932208b4b9285bcec5c51fde5ed';
@@ -21,7 +23,7 @@ const secretKey = 'test_secret_key_0a7d45e1280a4a1ab43d040b6b949524';
 const app = express();
 
 // middlewares
-// app.use(cors());
+app.use(cors());
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(expressSession({secret:"secret", resave:false, saveUninitialized:false}));
@@ -66,7 +68,7 @@ app.get('/products',async (req, res) => {
 });
 
 // Autheniticate middleware
-app.get('/add',isAuthenticated, (req,res)=>{    
+app.get('/add', (req,res)=>{    
   res.render('newproduct')
 });
 
@@ -127,77 +129,58 @@ app.delete('/products/:id',async(req,res)=>{
   res.redirect('/products');
 });
 
-app.get('/payment-verify', async (req, res) => {
-  const token = req.query.token;
-  const amount = req.query.price;
-
-  const data = {
-    token: token,
-    amount: amount
-  };
-  const config = {
-    headers: { 
-      'Authorization': 'Key ' + secretKey, 
-      'Content-Type': 'application/json'
-  }
-  };
-    // Verify the payment token with Khalti API
-    const response = await axios.post("https://khalti.com/api/v2/payment/verify/", data, config)
-    .then(response => {
-      console.log(response.data);
-      res.send('success');
-    })
-    .catch(error => {
-      console.log(error);
-    });
+// adding new orders into database
+app.post('/orders', async(req,res)=>{
+  const response = req.body.paymentResponse; 
+  const orders = await OrderItem.create({
+    orderID: response.idx,
+    itemID: response.product_identity,
+    itemName: response.product_name,
+    price: response.amount,
+    quantity: 2
+  });
 });
 
-
-
+// verifying payment 
 app.get('/payment/:id', async(req, res) => {
   const itemId = req.params.id;
   const data = await Items.findByPk(itemId);
   res.render('payment_form',{data, publicKey });
 });
 
+// app.get('/payment-verify', async (req, res) => {
+//   const token = req.query.token;
+//   const amount = req.query.price;
+//   const data = {
+//     token: token,
+//     amount: amount
+//   };
+//   const config = {
+//     headers: { 
+//       'Authorization': 'Key ' + secretKey, 
+//       'Content-Type': 'application/json'
+//   }};
+//     try {
+//       const response = await axios.post("https://khalti.com/api/v2/payment/verify/", data, config);
+//       console.log(response.data);
+//     } catch (error) {
+//       console.log(error);
+//       res.status(500).json({ status: 'error', message: 'Payment verification failed' });
+//     }
+//   });
 
-// router.post('/payment-verify', function(req, res) {
-// 	// console.log(payload);
-
-// 	var KHALTI_VERIFY = 'https://khalti.com/api/v2/payment/verify/';
-// 	let options = {
-// 	  method: 'POST',
-// 	  uri: KHALTI_VERIFY,
-// 	  body: JSON.stringify({
-// 	    'token': req.body.token,
-// 	    'amount': req.body.amount
-// 	  }),
-// 	  headers: {
-// 	    "Authorization": `Key ${secretKey}`,
-// 	    "Content-Type": 'application/json'
-// 	  }
-// 	}
-// 	requestp(options)
-// 	.then((result)=>{
-// 	  console.log('charged', result);
-// 	    res.jsonp({
-// 	      data: result,
-// 	      status: "success"
-// 	    });
-// 	})
-// 	.catch((error)=> {
-// 	  res.status(500).send({
-// 			error: error.response.data,
-// 			status: 'failed',
-// 		});
-// 	});
+// app.get('/orders', (req,res)=>{
+//   // res.send('order page');
+//   const orderDetails = { orderId: 123, itemName: 'Sample Item', price: 1000 };
+//   res.status(200).json(orderDetails);
 // });
+
 
 
 // signin function
 app.get('/signin',async(req,res)=>{
   res.render('signin');
-})
+});
 
 // signing in 
 app.post('/signin', async (req, res) => {
@@ -228,7 +211,7 @@ app.post('/signin', async (req, res) => {
 // login function
 app.get('/login',(req,res)=>{
   res.render('login');
-})
+});
 
 // logging in 
 app.post('/login', async (req, res) => {
