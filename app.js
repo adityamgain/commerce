@@ -10,6 +10,7 @@ const db = require('./models/user');
 const User  = require('./models/user');
 const Items  = require('./models/product');
 const  OrderItem  = require('./models/orders');
+const Order= require('./models/orders');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 const { isAuthenticated } = require('./authenticate');
@@ -136,7 +137,7 @@ app.post('/orders', async(req,res)=>{
     orderID: response.idx,
     itemID: response.product_identity,
     itemName: response.product_name,
-    price: response.amount,
+    price: response.amount/100,
     quantity: 2
   });
 });
@@ -145,8 +146,13 @@ app.post('/orders', async(req,res)=>{
 app.get('/payment/:id', async(req, res) => {
   const itemId = req.params.id;
   const data = await Items.findByPk(itemId);
-  res.render('payment_form',{data, publicKey });
+  res.render('payment_form',{data, publicKey, secretKey });
 });
+
+app.get('/success', (req,res)=>{
+  res.render('orderSuccess');
+});
+
 
 // app.get('/payment-verify', async (req, res) => {
 //   const token = req.query.token;

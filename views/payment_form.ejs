@@ -6,8 +6,8 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
-        <button id="payment-button">Pay with Khalti</button>
 
+        <button id="payment-button">Pay with Khalti</button>
 
     <script>
         var config = {
@@ -24,6 +24,7 @@
                 ],
             "eventHandler": {
                 onSuccess (payload) {
+                    var paymentAmountPaisa = <%= data.price %> * 100;
                     console.log(payload);
                     axios.post('http://localhost:3000/orders', { paymentResponse: payload },{
                         headers: {
@@ -37,8 +38,8 @@
                         console.error('Error adding order details:', error);
                     });                   
                     let data = {
-                        "token": payload.token,
-                        "amount": payload.amount
+                        token : payload.token,
+                        amount: paymentAmountPaisa
                         };
 
                         let config = {
@@ -49,7 +50,7 @@
                         };
 
                         axios.post("https://khalti.com/api/v2/payment/verify/", data, config) 
-                        window.location.href = "http://localhost:3000/products";
+                        window.location.href = "http://localhost:3000/success";
                
                     },
                 onError (error) {
@@ -64,7 +65,7 @@
         var checkout = new KhaltiCheckout(config);
         var btn = document.getElementById("payment-button");
         btn.onclick = function () {
-            checkout.show({amount: <%= data.price %>*100});
+            checkout.show({amount: <%= data.price %> * 100});
         };
     </script>
 </body>
